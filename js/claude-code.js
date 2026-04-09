@@ -724,6 +724,8 @@ function connectWebSocket() {
                     if (filteredData) {
                         terminal.write(filteredData);
                     }
+                } else if (msg.type === "error" && msg.message) {
+                    terminal.writeln(`\x1b[1;31m${msg.message}\x1b[0m`);
                 }
             } catch (e) {
                 // Unknown format, ignore

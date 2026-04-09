@@ -3,7 +3,9 @@ name = "comfy-pilot"
 description = "MCP server + embedded terminal that lets Claude Code see and edit your ComfyUI workflows"
 version = "1.0.24"
 license = { file = "LICENSE" }
-dependencies = []
+dependencies = [
+    "pywinpty>=2.0.15; platform_system == 'Windows'",
+]
 
 [project.optional-dependencies]
 dev = ["pytest"]

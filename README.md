@@ -188,7 +188,7 @@ The plugin auto-configures MCP on startup. Check ComfyUI console for errors, or 
 {
   "mcpServers": {
     "comfyui": {
-      "command": "python3",
+      "command": "python",
       "args": ["/path/to/comfy-pilot/mcp_server.py"]
     }
   }
@@ -197,7 +197,13 @@ The plugin auto-configures MCP on startup. Check ComfyUI console for errors, or 
 
 ### Terminal disconnected
 
-Click the ↻ button to reconnect, or check ComfyUI console for errors.
+On Windows, install `pywinpty` in the same Python environment used by ComfyUI:
+
+```bash
+python -m pip install pywinpty
+```
+
+Then restart ComfyUI and click the reconnect button.
 
 ## License
 
