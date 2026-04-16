@@ -524,6 +524,35 @@ function initTerminal(terminalContainer) {
     // Open terminal in container
     terminal.open(terminalContainer);
 
+    // 统一输入发送：键入与粘贴都走同一路径
+    const sendTerminalInput = (data) => {
+        if (!data) return;
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+            websocket.send(JSON.stringify({ type: "i", d: data }));
+        }
+    };
+
+    // 统一粘贴文本处理（Windows/Unix 都转成 \r）
+    const forwardPastedText = (text) => {
+        if (!text) return;
+        const normalized = text.replace(/\r\n/g, "\n").replace(/\n/g, "\r");
+        sendTerminalInput(normalized);
+    };
+
+    // 捕获浏览器粘贴事件，绕过宿主页面全局快捷键冲突
+    const handlePasteEvent = (event) => {
+        const text = event.clipboardData?.getData("text");
+        if (!text) return;
+        event.preventDefault();
+        event.stopPropagation();
+        forwardPastedText(text);
+    };
+
+    if (terminal.textarea) {
+        terminal.textarea.addEventListener("paste", handlePasteEvent, true);
+    }
+    terminalContainer.addEventListener("paste", handlePasteEvent, true);
+
     // Fit to container after a short delay
     setTimeout(() => {
         fitAddon.fit();
@@ -531,10 +560,8 @@ function initTerminal(terminalContainer) {
 
     // Handle terminal input - use minimal protocol for speed
     terminal.onData((data) => {
-        if (websocket && websocket.readyState === WebSocket.OPEN) {
-            // Fast path: 'i' prefix + data (no JSON overhead)
-            websocket.send(JSON.stringify({ type: "i", d: data }));
-        }
+        // Fast path: 'i' prefix + data (no JSON overhead)
+        sendTerminalInput(data);
     });
 
     // Handle special keyboard shortcuts for macOS-style editing
@@ -547,10 +574,23 @@ function initTerminal(terminalContainer) {
 
         // Helper to send escape sequence
         const send = (data) => {
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
-                websocket.send(JSON.stringify({ type: "i", d: data }));
-            }
+            sendTerminalInput(data);
         };
+
+        // Cmd/Ctrl + V 或 Shift + Insert：显式读取系统剪贴板并发送到终端
+        const isPasteShortcut =
+            (modKey && !altKey && !event.shiftKey && (event.key === "v" || event.key === "V")) ||
+            (!modKey && event.shiftKey && event.key === "Insert");
+        if (isPasteShortcut) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.readText()
+                    .then((text) => forwardPastedText(text))
+                    .catch(() => {});
+            }
+            return false;
+        }
 
         // Shift+Enter: insert a literal newline (for multi-line input in Claude)
         // Send ESC + Enter sequence that terminals like iTerm2/WezTerm use for Shift+Enter
